@@ -24,8 +24,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import libery from '../assets/icon.png';
-import liberyopen from '../assets/iconopen.png';
+import libery from '../assets/whiteicon.png';
+import liberyopen from '../assets/whiteiconopen.png';
 import UserDropdown from './UserDropdownCP.vue';
 
 const router = useRouter();
@@ -78,12 +78,12 @@ onUnmounted(() => {
 
 <style scoped>
 .header {
-  background-color: #ffffffc5;
+  background-color: #000000;
   padding: 15px 20px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  border-bottom: 2px solid #000000;
+  border-bottom: 2px solid #ffffff;
   position: relative;
   z-index: 100;
 }
@@ -124,7 +124,7 @@ onUnmounted(() => {
 
 .menu li a {
   position: relative;
-  color: #000000;
+  color: #ffffff;
   text-decoration: none;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -140,7 +140,7 @@ onUnmounted(() => {
   bottom: 0;
   height: 2px;
   width: 0;
-  background-color: #000000;
+  background-color: #ffffff;
   transition: width 0.3s ease;
 }
 
