@@ -8,22 +8,12 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue';
 import HeaderCP from '../components/HeaderCP.vue';
 import BookGrid from '../components/LibCP.vue';
 
-export default {
-  name: 'HomePage',
-  components: {
-    HeaderCP,
-    BookGrid
-  },
-  data() {
-    return {
-      musicas: []
-    };
-  }
-};
+const musicas = ref([]);
 </script>
 
 <style scoped>
