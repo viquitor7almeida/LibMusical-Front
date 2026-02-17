@@ -1,53 +1,35 @@
 import axios from 'axios';
+import { getToken } from './AuthService.js';
 
-const API_URL = import.meta.env.VITE_APP_API_URL;
-const API_BASE = `${API_URL}/chordsymbols`;
+const api = axios.create({
+    baseURL: import.meta.env.VITE_APP_API_URL
+});
 
-export async function createChord(chordData) {
-  try {
-    const response = await axios.post(API_BASE, chordData);
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao criar cifra:", error);
-    throw error;
-  }
-}
+api.interceptors.request.use(config => {
+    const token = getToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
 
-export async function fetchAllChords() {
-  try {
-    const response = await axios.get(API_BASE);
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao buscar cifras:", error);
-    throw error;
-  }
-}
+const API_BASE = `/chordsymbols`;
 
 export async function fetchChordsByMusicId(musicId) {
-  try {
-    const response = await axios.get(`${API_BASE}/user/${musicId}`);
+    const response = await api.get(`${API_BASE}/music/${musicId}`);
     return response.data;
-  } catch (error) {
-    console.error(`Erro ao buscar cifras da música ${musicId}:`, error);
-    throw error;
-  }
+}
+
+export async function createChord(musicId, chordData) {
+    const response = await api.post(`${API_BASE}/music/${musicId}`, chordData);
+    return response.data;
 }
 
 export async function updateChord(id, chordData) {
-  try {
-    const response = await axios.put(`${API_BASE}/${id}`, chordData);
+    const response = await api.put(`${API_BASE}/${id}`, chordData);
     return response.data;
-  } catch (error) {
-    console.error(`Erro ao atualizar cifra:`, error);
-    throw error;
-  }
 }
 
 export async function deleteChord(id) {
-  try {
-    await axios.delete(`${API_BASE}/${id}`);
-  } catch (error) {
-    console.error(`Erro ao excluir cifra:`, error);
-    throw error;
-  }
+    await api.delete(`${API_BASE}/${id}`);
 }

@@ -135,39 +135,132 @@ export default {
   margin: 40px auto;
   perspective: 1000px;
 }
+
 .book-cover {
-  background-color: #5c3d2e; 
+  /* Madeira bem escura quase preta */
+  background-color: #1a120b; 
   padding: 15px 15px 15px 30px;
   border-radius: 5px 15px 15px 5px;
-  box-shadow: 10px 10px 20px rgba(0,0,0,0.4), inset 5px 0 10px rgba(0,0,0,0.5);
+  box-shadow: 15px 15px 30px rgba(0,0,0,0.6), inset 8px 0 15px rgba(0,0,0,0.5);
   position: relative;
 }
+
 .paper {
-  background-color: #f4ecd8; 
-  background-image: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, transparent 5%), repeating-linear-gradient(transparent 0px, transparent 34px, #d1c5a5 35px);
+  /* Fundo grafite profundo com leve toque de marrom */
+  background-color: #2c241e; 
+  /* Linhas do papel agora em um tom mais suave e escuro */
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 5%), 
+    repeating-linear-gradient(transparent 0px, transparent 34px, rgba(74, 63, 53, 0.5) 35px);
   padding: 50px 40px;
   min-height: 700px;
   border-radius: 2px 10px 10px 2px;
   position: relative;
-  box-shadow: inset 2px 0 5px rgba(0,0,0,0.1);
+  box-shadow: inset 4px 0 10px rgba(0,0,0,0.3);
   font-family: 'Crimson Text', 'Georgia', serif;
 }
+
 .spine-shadow {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 40px;
-  background: linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 100%);
+  position: absolute; left: 0; top: 0; bottom: 0; width: 45px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 100%);
   pointer-events: none;
 }
+
 .book-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-.book-table th { text-align: left; font-variant: small-caps; font-size: 1.2rem; color: #5d4037; border-bottom: 2px solid #bdae93; padding-bottom: 5px; }
-.book-table td { padding: 12px 8px; color: #3e2723; border-bottom: 1px solid rgba(189, 174, 147, 0.4); }
-.action-btn { background: none; border: 1px solid transparent; color: #795548; font-style: italic; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-.action-btn:hover { color: #3e2723; text-decoration: underline; }
-.audio-btn { background: none; border: none; cursor: pointer; font-size: 1.3rem; filter: sepia(1); }
-.pagination { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: auto; padding-top: 20px; }
-.page-btn { background: transparent; border: 1px solid #bdae93; color: #5d4037; font-size: 1.2rem; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; }
-.page-btn:disabled { opacity: 0.3; }
-.page-info { font-style: italic; color: #8d6e63; }
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
-.modal-content { width: 85%; max-width: 700px; max-height: 85vh; border: 8px solid #5c3d2e; overflow-y: auto; }
-.close-modal { position: absolute; top: 15px; right: 15px; background: #5c3d2e; color: #f4ecd8; border: none; padding: 5px 12px; cursor: pointer; border-radius: 3px; font-weight: bold; }
+
+.book-table th { 
+  text-align: left; 
+  font-variant: small-caps; 
+  font-size: 1.1rem; 
+  color: #d1c5a5; /* Bege envelhecido */
+  border-bottom: 2px solid #4a3f35; 
+  padding-bottom: 8px; 
+  letter-spacing: 1px;
+}
+
+.book-table td { 
+  padding: 14px 8px; 
+  color: #e0d8c3; /* Texto ligeiramente amarelado para leitura suave */
+  border-bottom: 1px solid rgba(74, 63, 53, 0.4); 
+}
+
+.action-btn { 
+  background: none; 
+  border: none; 
+  color: #a68b6d; /* Bronze suave */
+  font-style: italic; 
+  font-weight: bold; 
+  cursor: pointer; 
+  transition: all 0.3s; 
+}
+
+.action-btn:hover { 
+  color: #d1c5a5; 
+  text-shadow: 0 0 8px rgba(209, 197, 165, 0.4);
+}
+
+.audio-btn { 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  font-size: 1.2rem; 
+  filter: sepia(1) brightness(0.8); /* Botão de áudio menos berrante */
+}
+
+.pagination { 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 20px; 
+  margin-top: auto; 
+  padding-top: 20px; 
+}
+
+.page-btn { 
+  background: transparent; 
+  border: 1px solid #4a3f35; 
+  color: #d1c5a5; 
+  font-size: 1.1rem; 
+  border-radius: 50%; 
+  width: 35px; 
+  height: 35px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  transition: 0.3s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #4a3f35;
+  color: #f4ecd8;
+}
+
+.page-btn:disabled { opacity: 0.2; }
+.page-info { font-style: italic; color: #a68b6d; }
+
+/* Modal mantendo o estilo escuro */
+.modal-overlay { 
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+  background: rgba(0, 0, 0, 0.9); 
+  display: flex; justify-content: center; align-items: center; 
+  z-index: 1000; backdrop-filter: blur(5px); 
+}
+
+.modal-content { 
+  width: 90%; 
+  max-width: 800px; 
+  max-height: 85vh; 
+  border: 10px solid #1a120b; /* Moldura de madeira escura */
+  overflow-y: auto; 
+  background-color: #2c241e;
+}
+
+.close-modal { 
+  position: absolute; top: 15px; right: 15px; 
+  background: #4a3f35; 
+  color: #d1c5a5; 
+  border: none; padding: 5px 12px; 
+  cursor: pointer; border-radius: 3px; 
+  z-index: 10;
+}
 </style>
