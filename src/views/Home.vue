@@ -24,4 +24,8 @@ const musicas = ref([]);
   justify-content: center;
 }
 
+.lib{
+  padding-top: 20px;
+}
+
 </style>

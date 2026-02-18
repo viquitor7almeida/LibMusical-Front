@@ -4,6 +4,10 @@
       <div class="paper">
         <div class="spine-shadow"></div>
         
+        <div class="header-actions">
+          <button @click="openEditModal({})" class="add-btn">+</button>
+        </div>
+
         <table class="book-table">
           <thead>
             <tr>
@@ -12,6 +16,7 @@
               <th>Versos</th>
               <th>Cifra</th>
               <th>Mp3</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -30,6 +35,10 @@
                 </button>
                 <span v-else>-</span>
               </td>
+              <td class="row-actions">
+                <button @click="openEditModal(music)" class="row-btn edit" title="Editar">✎</button>
+                <button @click="handleDelete(music.id)" class="row-btn delete" title="Excluir">✕</button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -42,7 +51,7 @@
       </div>
     </div>
 
-    <div v-if="activeModal && selectedMusic" class="modal-overlay" @click.self="closeModal">
+    <div v-if="activeModal && (activeModal === 'verses' || activeModal === 'chords')" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content paper">
         <button class="close-modal" @click="closeModal">X</button>
         <VersesDisplay v-if="activeModal === 'verses'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" />
@@ -50,19 +59,28 @@
       </div>
     </div>
 
+    <MusicEditModal 
+      v-if="activeModal === 'edit'" 
+      :musicData="selectedMusic" 
+      :loading="submitting"
+      @close="closeModal" 
+      @save="handleSaveMusic"
+    />
+
     <audio ref="player" @ended="playingUrl = null"></audio>
   </div>
 </template>
 
 <script>
-import { fetchMusicsByUser } from './../services/MusicService.js';
+import { fetchMusicsByUser, deleteMusic, updateMusic, createMusic, uploadMusicAudio } from './../services/MusicService.js';
 import { getUserId } from './../services/AuthService.js';
 import VersesDisplay from './VersesCP.vue';
 import ChordsDisplay from './ChordSymbolsCP.vue';
+import MusicEditModal from './MusicEditCP.vue'; // Importando o novo componente
 
 export default {
   name: 'LibCP',
-  components: { VersesDisplay, ChordsDisplay },
+  components: { VersesDisplay, ChordsDisplay, MusicEditModal },
   data() {
     return {
       musics: [],
@@ -70,7 +88,8 @@ export default {
       itemsPerPage: 15, 
       playingUrl: null,
       activeModal: null, 
-      selectedMusic: null
+      selectedMusic: null,
+      submitting: false
     };
   },
   computed: {
@@ -99,6 +118,39 @@ export default {
         console.error("Erro na requisição LibCP:", error);
       }
     },
+    async handleDelete(id) {
+      if (!confirm("Excluir esta música permanentemente?")) return;
+      try {
+        await deleteMusic(id);
+        await this.loadMusics();
+      } catch (error) {
+        console.error("Erro ao excluir música:", error);
+      }
+    },
+    async handleSaveMusic({ music, file }) {
+      this.submitting = true;
+      try {
+        let savedMusic;
+        if (music.id) {
+          savedMusic = await updateMusic(music.id, music);
+        } else {
+          const userId = getUserId();
+          savedMusic = await createMusic({ ...music, userId });
+        }
+
+        if (file && savedMusic.id) {
+          await uploadMusicAudio(savedMusic.id, file);
+        }
+
+        await this.loadMusics();
+        this.closeModal();
+      } catch (error) {
+        console.error("Erro ao salvar música:", error);
+        alert("Erro ao salvar dados.");
+      } finally {
+        this.submitting = false;
+      }
+    },
     openVerses(music) {
       this.selectedMusic = music;
       this.activeModal = 'verses';
@@ -106,6 +158,10 @@ export default {
     openChords(music) {
       this.selectedMusic = music;
       this.activeModal = 'chords';
+    },
+    openEditModal(music) {
+      this.selectedMusic = { ...music }; // Cópia para não alterar a lista antes de salvar
+      this.activeModal = 'edit';
     },
     closeModal() {
       this.activeModal = null;
@@ -137,7 +193,6 @@ export default {
 }
 
 .book-cover {
-  /* Madeira bem escura quase preta */
   background-color: #1a120b; 
   padding: 15px 15px 15px 30px;
   border-radius: 5px 15px 15px 5px;
@@ -146,9 +201,7 @@ export default {
 }
 
 .paper {
-  /* Fundo grafite profundo com leve toque de marrom */
   background-color: #2c241e; 
-  /* Linhas do papel agora em um tom mais suave e escuro */
   background-image: 
     linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 5%), 
     repeating-linear-gradient(transparent 0px, transparent 34px, rgba(74, 63, 53, 0.5) 35px);
@@ -166,13 +219,37 @@ export default {
   pointer-events: none;
 }
 
+.header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.add-btn {
+  background: #3d3128;
+  color: #6e6448;
+  border: 1px solid #4a3f35;
+  padding: 3px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: large;
+  text-transform: uppercase;
+  transition: all 0.3s;
+}
+
+.add-btn:hover {
+  background: #4a3f35;
+  color: #fff;
+}
+
 .book-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
 
 .book-table th { 
   text-align: left; 
   font-variant: small-caps; 
   font-size: 1.1rem; 
-  color: #d1c5a5; /* Bege envelhecido */
+  color: #d1c5a5; 
   border-bottom: 2px solid #4a3f35; 
   padding-bottom: 8px; 
   letter-spacing: 1px;
@@ -180,14 +257,14 @@ export default {
 
 .book-table td { 
   padding: 14px 8px; 
-  color: #e0d8c3; /* Texto ligeiramente amarelado para leitura suave */
+  color: #e0d8c3; 
   border-bottom: 1px solid rgba(74, 63, 53, 0.4); 
 }
 
 .action-btn { 
   background: none; 
   border: none; 
-  color: #a68b6d; /* Bronze suave */
+  color: #a68b6d; 
   font-style: italic; 
   font-weight: bold; 
   cursor: pointer; 
@@ -199,12 +276,30 @@ export default {
   text-shadow: 0 0 8px rgba(209, 197, 165, 0.4);
 }
 
+.row-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.row-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #5c4b3c;
+  transition: color 0.2s;
+}
+
+.row-btn.edit:hover { color: #d1c5a5; }
+.row-btn.delete:hover { color: #ff4d4d; }
+
 .audio-btn { 
   background: none; 
   border: none; 
   cursor: pointer; 
   font-size: 1.2rem; 
-  filter: sepia(1) brightness(0.8); /* Botão de áudio menos berrante */
+  filter: sepia(1) brightness(0.8); 
 }
 
 .pagination { 
@@ -238,7 +333,6 @@ export default {
 .page-btn:disabled { opacity: 0.2; }
 .page-info { font-style: italic; color: #a68b6d; }
 
-/* Modal mantendo o estilo escuro */
 .modal-overlay { 
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
   background: rgba(0, 0, 0, 0.9); 
@@ -250,7 +344,7 @@ export default {
   width: 90%; 
   max-width: 800px; 
   max-height: 85vh; 
-  border: 10px solid #1a120b; /* Moldura de madeira escura */
+  border: 10px solid #1a120b; 
   overflow-y: auto; 
   background-color: #2c241e;
 }
