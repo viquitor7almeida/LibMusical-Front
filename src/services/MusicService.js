@@ -33,9 +33,7 @@ export async function createMusic(musicData) {
 export async function uploadMusicAudio(id, file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.patch(`${API_BASE}/${id}/audio`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await api.patch(`${API_BASE}/${id}/audio`, formData);
     return response.data;
 }
 

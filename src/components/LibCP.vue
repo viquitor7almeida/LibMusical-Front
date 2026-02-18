@@ -15,7 +15,7 @@
               <th>Compositores</th>
               <th>Versos</th>
               <th>Cifra</th>
-              <th>Mp3</th>
+              <th class="text-center">Mp3</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -29,11 +29,24 @@
               <td>
                 <button @click="openChords(music)" class="action-btn">Ver Cifra</button>
               </td>
-              <td>
-                <button v-if="music.audioUrl" @click="playAudio(music.audioUrl)" class="audio-btn">
-                  {{ playingUrl === music.audioUrl ? '⏸️' : '▶️' }}
-                </button>
-                <span v-else>-</span>
+              <td class="text-center">
+                <div v-if="music.audioUrl" class="audio-cell">
+                  <button @click="playAudio(music)" class="audio-btn">
+                    {{ currentPlayingUrl === music.audioUrl ? '⏸️' : '▶️' }}
+                  </button>
+                </div>
+                <div v-else class="audio-cell">
+                  <label class="inline-add-btn" :class="{ 'loading-spinner': submittingId === music.id }">
+                    <input 
+                      type="file" 
+                      accept="audio/*" 
+                      @change="handleDirectUpload($event, music.id)" 
+                      hidden
+                      :disabled="submittingId === music.id"
+                    >
+                    {{ submittingId === music.id ? '...' : '+' }}
+                  </label>
+                </div>
               </td>
               <td class="row-actions">
                 <button @click="openEditModal(music)" class="row-btn edit" title="Editar">✎</button>
@@ -66,9 +79,8 @@
       @close="closeModal" 
       @save="handleSaveMusic"
     />
-
-    <audio ref="player" @ended="playingUrl = null"></audio>
-  </div>
+    
+    </div>
 </template>
 
 <script>
@@ -76,20 +88,26 @@ import { fetchMusicsByUser, deleteMusic, updateMusic, createMusic, uploadMusicAu
 import { getUserId } from './../services/AuthService.js';
 import VersesDisplay from './VersesCP.vue';
 import ChordsDisplay from './ChordSymbolsCP.vue';
-import MusicEditModal from './MusicEditCP.vue'; // Importando o novo componente
+import MusicEditModal from './MusicEditCP.vue';
 
 export default {
   name: 'LibCP',
   components: { VersesDisplay, ChordsDisplay, MusicEditModal },
+  props: {
+    currentPlayingUrl: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       musics: [],
       currentPage: 1,
       itemsPerPage: 15, 
-      playingUrl: null,
       activeModal: null, 
       selectedMusic: null,
-      submitting: false
+      submitting: false,
+      submittingId: null
     };
   },
   computed: {
@@ -127,6 +145,21 @@ export default {
         console.error("Erro ao excluir música:", error);
       }
     },
+    async handleDirectUpload(event, musicId) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      this.submittingId = musicId;
+      try {
+        await uploadMusicAudio(musicId, file);
+        await this.loadMusics();
+      } catch (error) {
+        alert("Erro ao subir arquivo de áudio.");
+        console.error(error);
+      } finally {
+        this.submittingId = null;
+      }
+    },
     async handleSaveMusic({ music, file }) {
       this.submitting = true;
       try {
@@ -137,16 +170,13 @@ export default {
           const userId = getUserId();
           savedMusic = await createMusic({ ...music, userId });
         }
-
         if (file && savedMusic.id) {
           await uploadMusicAudio(savedMusic.id, file);
         }
-
         await this.loadMusics();
         this.closeModal();
       } catch (error) {
         console.error("Erro ao salvar música:", error);
-        alert("Erro ao salvar dados.");
       } finally {
         this.submitting = false;
       }
@@ -160,22 +190,18 @@ export default {
       this.activeModal = 'chords';
     },
     openEditModal(music) {
-      this.selectedMusic = { ...music }; // Cópia para não alterar a lista antes de salvar
+      this.selectedMusic = { ...music };
       this.activeModal = 'edit';
     },
     closeModal() {
       this.activeModal = null;
       this.selectedMusic = null;
     },
-    playAudio(url) {
-      const audio = this.$refs.player;
-      if (this.playingUrl === url) {
-        audio.pause();
-        this.playingUrl = null;
+    playAudio(music) {
+      if (this.currentPlayingUrl === music.audioUrl) {
+        this.$emit('play-music', { audioUrl: null, name: '' });
       } else {
-        this.playingUrl = url;
-        audio.src = url;
-        audio.play();
+        this.$emit('play-music', music);
       }
     }
   },
@@ -186,6 +212,43 @@ export default {
 </script>
 
 <style scoped>
+.text-center {
+  text-align: center !important;
+}
+
+.audio-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+}
+
+.inline-add-btn {
+  background: #6f5c4d;
+  color: #d5d5d5;
+  border: 1px solid #8a827b;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+}
+
+.inline-add-btn:hover {
+  background: #4a3f35;
+  color: #fff;
+}
+
+.loading-spinner {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .book-container {
   max-width: 950px;
   margin: 40px auto;
