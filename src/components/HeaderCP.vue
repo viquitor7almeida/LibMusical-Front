@@ -78,7 +78,6 @@ onUnmounted(() => {
 
 <style scoped>
 .header {
-  background-color: #000000;
   padding: 15px 20px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
