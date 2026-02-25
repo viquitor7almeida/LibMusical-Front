@@ -12,10 +12,31 @@
       </li>
 
       <li v-else class="user-menu-container">
-        <UserDropdown
-          :user-email="userEmail"
-          @logout="handleLogout"
-        />
+        <div class="avatar-clean-wrapper" @click="toggleDropdown">
+          <img :src="avatarIcon" alt="User Profile" class="avatar-png" />
+          <span class="chevron" :class="{ 'rotate': isDropdownOpen }">▾</span>
+        </div>
+
+        <transition name="dropdown-anim">
+          <div v-if="isDropdownOpen" class="custom-dropdown">
+            <div class="dropdown-info">
+              <span class="user-label">Sessão ativa</span>
+              <div class="dropdown-header">{{ userEmail }}</div>
+            </div>
+            
+            <div class="dropdown-divider"></div>
+
+            <router-link to="/perfil" class="dropdown-item" @click="isDropdownOpen = false">
+              <span class="item-text">Perfil</span>
+              <span class="item-arrow">→</span>
+            </router-link>
+            
+            <button class="dropdown-item logout-btn" @click="handleLogout">
+              <span class="item-text">Sair</span>
+              <span class="item-arrow">→</span>
+            </button>
+          </div>
+        </transition>
       </li>
     </ul>
   </header>
@@ -24,37 +45,45 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { getUser, logout as authLogout, isAuthenticated } from '../services/AuthService.js'; 
+
 import libery from '../assets/whiteicon.png';
 import liberyopen from '../assets/whiteiconopen.png';
-import UserDropdown from './UserDropdownCP.vue';
+import avatarIcon from '../assets/avatar.png';
 
 const router = useRouter();
 
 const isLoggedIn = ref(false);
 const userEmail = ref('');
-const userRole = ref('');
 const iconSource = ref(libery);
+const isDropdownOpen = ref(false);
 
 const checkAuth = () => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  if (user) {
+  const user = getUser();
+  const auth = isAuthenticated();
+  
+  if (auth && user) {
     isLoggedIn.value = true;
     userEmail.value = user.email || '';
-    userRole.value = user.role || '';
   } else {
     isLoggedIn.value = false;
     userEmail.value = '';
-    userRole.value = '';
   }
 };
 
-const logout = () => {
-  localStorage.removeItem('user');
+const toggleDropdown = (event) => {
+  event.stopPropagation();
+  isDropdownOpen.value = !isDropdownOpen.value;
+};
+
+const closeDropdown = () => {
+  isDropdownOpen.value = false;
 };
 
 const handleLogout = () => {
-  logout();
+  authLogout();
   checkAuth();
+  isDropdownOpen.value = false;
   router.push('/login');
 };
 
@@ -69,10 +98,12 @@ const handleMouseLeave = () => {
 onMounted(() => {
   checkAuth();
   window.addEventListener('auth-change', checkAuth);
+  window.addEventListener('click', closeDropdown);
 });
 
 onUnmounted(() => {
   window.removeEventListener('auth-change', checkAuth);
+  window.removeEventListener('click', closeDropdown);
 });
 </script>
 
@@ -84,7 +115,7 @@ onUnmounted(() => {
   align-items: center;
   border-bottom: 2px solid #ffffff;
   position: relative;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .icon-group {
@@ -99,9 +130,6 @@ onUnmounted(() => {
   height: 50px;
   width: auto;
   cursor: pointer;
-  /* A transição agora é controlada pelo JS/Vue ao mudar a src,
-     então removemos o 'transition: opacity 0.2s;' daqui
-     e mantemos apenas para o efeito de opacidade. */
   transition: opacity 0.2s;
 }
 
@@ -121,7 +149,13 @@ onUnmounted(() => {
   justify-self: end;
 }
 
-.menu li a {
+.menu li {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.menu li > a:not(.dropdown-item) {
   position: relative;
   color: #ffffff;
   text-decoration: none;
@@ -132,39 +166,143 @@ onUnmounted(() => {
   transition: color 0.3s ease;
 }
 
-.menu li > a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-  width: 0;
-  background-color: #ffffff;
-  transition: width 0.3s ease;
-}
-
-.menu li > a:hover::after {
-  width: 100%;
-}
-
 .user-menu-container {
   position: relative;
 }
 
-.slide-navbar-enter-active,
-.slide-navbar-leave-active {
-  transition: all 0.3s ease-out;
+.avatar-clean-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
-.slide-navbar-enter-from,
-.slide-navbar-leave-to {
+.avatar-clean-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.avatar-png {
+  height: 42px;
+  width: auto;
+  display: block;
+}
+
+.chevron {
+  color: #fff;
+  font-size: 0.9rem;
+  transition: transform 0.3s ease;
+}
+
+.chevron.rotate {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown {
+  position: absolute;
+  top: calc(100% + 20px);
+  right: 0;
+  background-color: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 240px;
+  border-radius: 12px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  z-index: 1100;
+  overflow: hidden;
+}
+
+.dropdown-info {
+  padding: 12px 15px;
+}
+
+.user-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #666;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  font-family: 'Inter', sans-serif;
+}
+
+.dropdown-header {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 15px;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.item-text {
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.dropdown-item:hover .item-text {
+  transform: translateX(3px);
+}
+
+.item-arrow {
   opacity: 0;
-  transform: translateY(-100%);
+  transform: translateX(-15px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
-.slide-navbar-enter-to,
-.slide-navbar-leave-from {
+.dropdown-item:hover .item-arrow {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(0);
+}
+
+.logout-btn {
+  color: #ff4d4d !important;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 77, 77, 0.1);
+}
+
+.dropdown-anim-enter-active {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.dropdown-anim-leave-active {
+  transition: all 0.15s ease-in;
+}
+
+.dropdown-anim-enter-from,
+.dropdown-anim-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>
