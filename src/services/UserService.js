@@ -22,3 +22,27 @@ export const registerUser = async (userData) => {
     const response = await api.post('/users', userData);
     return response.data;
 };
+
+export const updateUserProfile = async (userId, userData) => {
+    const profilePayload = {
+        name: userData.name,
+        email: userData.email 
+    };
+    
+    const response = await api.put(`/users/${userId}`, profilePayload);
+
+    if (userData.password) {
+        const passwordPayload = {
+            newPassword: userData.password
+        };
+        
+        await api.patch(`/users/${userId}/password`, passwordPayload);
+    }
+
+    return response.data;
+};
+
+export const fetchMusicsByUser = async (userId) => {
+    const response = await api.get(`/musics/user/${userId}`);
+    return response.data;
+};
