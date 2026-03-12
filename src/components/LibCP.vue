@@ -5,7 +5,14 @@
         <div class="spine-shadow"></div>
         
         <div class="header-actions">
-          <button @click="openEditModal({})" class="add-btn">+</button>
+          <div class="header-center">
+            <h2 class="grid-title">{{ currentType === 'COMPOSITION' ? 'Minhas Composições' : 'Cifras & Covers' }}</h2>
+            <button @click="openEditModal({ type: currentType })" class="add-btn">+</button>
+          </div>
+          
+          <button @click="toggleType" class="switch-grid-btn">
+            Ver {{ currentType === 'COMPOSITION' ? 'Covers' : 'Composições' }}
+          </button>
         </div>
 
         <table class="book-table">
@@ -79,8 +86,7 @@
       @close="closeModal" 
       @save="handleSaveMusic"
     />
-    
-    </div>
+  </div>
 </template>
 
 <script>
@@ -102,6 +108,7 @@ export default {
   data() {
     return {
       musics: [],
+      currentType: 'COMPOSITION',
       currentPage: 1,
       itemsPerPage: 15, 
       activeModal: null, 
@@ -130,11 +137,16 @@ export default {
           this.$router.push('/login');
           return;
         }
-        const response = await fetchMusicsByUser(userId);
+        const response = await fetchMusicsByUser(userId, this.currentType);
         this.musics = response?.content || (Array.isArray(response) ? response : []);
       } catch (error) {
         console.error("Erro na requisição LibCP:", error);
       }
+    },
+    toggleType() {
+      this.currentType = this.currentType === 'COMPOSITION' ? 'COVER' : 'COMPOSITION';
+      this.currentPage = 1;
+      this.loadMusics();
     },
     async handleDelete(id) {
       if (!confirm("Excluir esta música permanentemente?")) return;
@@ -148,7 +160,6 @@ export default {
     async handleDirectUpload(event, musicId) {
       const file = event.target.files[0];
       if (!file) return;
-
       this.submittingId = musicId;
       try {
         await uploadMusicAudio(musicId, file);
@@ -168,11 +179,17 @@ export default {
           savedMusic = await updateMusic(music.id, music);
         } else {
           const userId = getUserId();
-          savedMusic = await createMusic({ ...music, userId });
+          savedMusic = await createMusic({ ...music, userId, type: music.type });
         }
+        
         if (file && savedMusic.id) {
           await uploadMusicAudio(savedMusic.id, file);
         }
+
+        if (this.currentType !== music.type) {
+          this.currentType = music.type;
+        }
+
         await this.loadMusics();
         this.closeModal();
       } catch (error) {
@@ -190,7 +207,7 @@ export default {
       this.activeModal = 'chords';
     },
     openEditModal(music) {
-      this.selectedMusic = { ...music };
+      this.selectedMusic = { ...music, type: music.type || this.currentType };
       this.activeModal = 'edit';
     },
     closeModal() {
@@ -212,43 +229,6 @@ export default {
 </script>
 
 <style scoped>
-.text-center {
-  text-align: center !important;
-}
-
-.audio-cell {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 40px;
-}
-
-.inline-add-btn {
-  background: #6f5c4d;
-  color: #d5d5d5;
-  border: 1px solid #8a827b;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 1.1rem;
-  transition: all 0.3s;
-}
-
-.inline-add-btn:hover {
-  background: #4a3f35;
-  color: #fff;
-}
-
-.loading-spinner {
-  opacity: 0.5;
-  cursor: wait;
-}
-
 .book-container {
   max-width: 950px;
   margin: 40px auto;
@@ -277,36 +257,87 @@ export default {
 }
 
 .spine-shadow {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 45px;
+  position: absolute; 
+  left: 0; 
+  top: 0; 
+  bottom: 0; 
+  width: 45px;
   background: linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 100%);
   pointer-events: none;
 }
 
 .header-actions {
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 20px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 1px solid #4a3f35;
+  padding-bottom: 15px;
+  position: relative;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.grid-title {
+  color: #d1c5a5;
+  font-family: 'Crimson Text', serif;
+  font-variant: small-caps;
+  margin: 0;
+  font-size: 2.2rem;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
 .add-btn {
   background: #3d3128;
-  color: #6e6448;
+  color: #d1c5a5;
   border: 1px solid #4a3f35;
-  padding: 3px 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 50%;
   font-weight: bold;
-  font-size: large;
-  text-transform: uppercase;
+  font-size: 1.4rem;
   transition: all 0.3s;
 }
 
 .add-btn:hover {
   background: #4a3f35;
   color: #fff;
+  transform: scale(1.1);
 }
 
-.book-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+.switch-grid-btn {
+  position: absolute;
+  right: 0;
+  background: transparent;
+  border: 1px solid #4a3f35;
+  color: #a68b6d;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+
+.switch-grid-btn:hover {
+  background: #4a3f35;
+  color: #d1c5a5;
+}
+
+.book-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-bottom: 30px; 
+}
 
 .book-table th { 
   text-align: left; 
@@ -322,6 +353,51 @@ export default {
   padding: 14px 8px; 
   color: #e0d8c3; 
   border-bottom: 1px solid rgba(74, 63, 53, 0.4); 
+}
+
+.text-center { 
+  text-align: center !important; 
+}
+
+.audio-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+}
+
+.audio-btn { 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  font-size: 1.2rem; 
+  filter: sepia(1) brightness(0.8); 
+}
+
+.inline-add-btn {
+  background: #6f5c4d;
+  color: #d5d5d5;
+  border: 1px solid #8a827b;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+}
+
+.inline-add-btn:hover {
+  background: #4a3f35;
+  color: #fff;
+}
+
+.loading-spinner { 
+  opacity: 0.5; 
+  cursor: wait; 
 }
 
 .action-btn { 
@@ -354,15 +430,12 @@ export default {
   transition: color 0.2s;
 }
 
-.row-btn.edit:hover { color: #d1c5a5; }
-.row-btn.delete:hover { color: #ff4d4d; }
+.row-btn.edit:hover { 
+  color: #d1c5a5; 
+}
 
-.audio-btn { 
-  background: none; 
-  border: none; 
-  cursor: pointer; 
-  font-size: 1.2rem; 
-  filter: sepia(1) brightness(0.8); 
+.row-btn.delete:hover { 
+  color: #ff4d4d; 
 }
 
 .pagination { 
@@ -393,14 +466,27 @@ export default {
   color: #f4ecd8;
 }
 
-.page-btn:disabled { opacity: 0.2; }
-.page-info { font-style: italic; color: #a68b6d; }
+.page-btn:disabled { 
+  opacity: 0.2; 
+}
+
+.page-info { 
+  font-style: italic; 
+  color: #a68b6d; 
+}
 
 .modal-overlay { 
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
   background: rgba(0, 0, 0, 0.9); 
-  display: flex; justify-content: center; align-items: center; 
-  z-index: 1000; backdrop-filter: blur(5px); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 1000; 
+  backdrop-filter: blur(5px); 
 }
 
 .modal-content { 
@@ -410,14 +496,19 @@ export default {
   border: 10px solid #1a120b; 
   overflow-y: auto; 
   background-color: #2c241e;
+  position: relative;
 }
 
 .close-modal { 
-  position: absolute; top: 15px; right: 15px; 
+  position: absolute; 
+  top: 15px; 
+  right: 15px; 
   background: #4a3f35; 
   color: #d1c5a5; 
-  border: none; padding: 5px 12px; 
-  cursor: pointer; border-radius: 3px; 
+  border: none; 
+  padding: 5px 12px; 
+  cursor: pointer; 
+  border-radius: 3px; 
   z-index: 10;
 }
 </style>

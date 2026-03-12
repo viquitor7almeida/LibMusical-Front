@@ -3,8 +3,16 @@
     <div class="notebook-page edit-modal">
       <header class="page-header">
         <div class="title-group">
-          <h1>{{ musicData.id ? 'Editar Música' : 'Nova Música' }}</h1>
-          <span class="subtitle">Ficha Técnica</span>
+          <h1>{{ localMusic.id ? 'Editar Música' : 'Nova Música' }}</h1>
+          <button 
+            type="button" 
+            class="type-toggle-btn" 
+            @click="toggleLocalType"
+            :title="'Mudar para ' + (localMusic.type === 'COMPOSITION' ? 'Cifra / Cover' : 'Composição')"
+          >
+            {{ localMusic.type === 'COMPOSITION' ? 'Composição Original' : 'Cifra / Cover' }}
+            <span class="sync-icon">⇄</span>
+          </button>
         </div>
         <button class="close-x" @click="$emit('close')">✕</button>
       </header>
@@ -63,7 +71,7 @@ export default {
   props: {
     musicData: {
       type: Object,
-      default: () => ({ name: '', composers: '' })
+      default: () => ({ name: '', composers: '', type: 'COMPOSITION' })
     },
     loading: {
       type: Boolean,
@@ -76,7 +84,18 @@ export default {
       selectedFile: null
     };
   },
+  watch: {
+    musicData: {
+      handler(newVal) {
+        this.localMusic = { ...newVal };
+      },
+      deep: true
+    }
+  },
   methods: {
+    toggleLocalType() {
+      this.localMusic.type = this.localMusic.type === 'COMPOSITION' ? 'COVER' : 'COMPOSITION';
+    },
     handleFileChange(e) {
       this.selectedFile = e.target.files[0];
     },
@@ -130,6 +149,12 @@ export default {
   padding-bottom: 10px;
 }
 
+.title-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 h1 {
   font-family: 'Crimson Text', serif;
   color: #d1c5a5;
@@ -139,10 +164,31 @@ h1 {
   letter-spacing: 1px;
 }
 
-.subtitle {
+.type-toggle-btn {
+  background: rgba(74, 63, 53, 0.2);
+  border: 1px solid #4a3f35;
   color: #a68b6d;
   font-size: 0.8rem;
   font-style: italic;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  transition: all 0.3s ease;
+}
+
+.type-toggle-btn:hover {
+  background: rgba(166, 139, 109, 0.2);
+  color: #d1c5a5;
+  border-color: #a68b6d;
+}
+
+.sync-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
 }
 
 .close-x {
@@ -153,7 +199,9 @@ h1 {
   cursor: pointer;
 }
 
-.close-x:hover { color: #ff4d4d; }
+.close-x:hover { 
+  color: #ff4d4d; 
+}
 
 .form-group {
   margin-bottom: 25px;
@@ -216,6 +264,16 @@ h1 {
   cursor: pointer;
 }
 
+.btn-save:hover:not(:disabled) { 
+  background: #631717; 
+  color: #fff; 
+}
+
+.btn-save:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
+
 .btn-cancel {
   flex: 1;
   background: transparent;
@@ -226,7 +284,8 @@ h1 {
   cursor: pointer;
 }
 
-.btn-save:hover:not(:disabled) { background: #631717; color: #fff; }
-.btn-cancel:hover { background: #3d3128; color: #d1c5a5; }
-.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-cancel:hover { 
+  background: #3d3128; 
+  color: #d1c5a5; 
+}
 </style>

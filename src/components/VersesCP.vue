@@ -39,17 +39,29 @@
         <div v-if="loading" class="status-msg">Carregando estrutura...</div>
         
         <div v-else-if="verses && verses.length > 0">
-          <div v-for="verse in verses" :key="verse.id" class="verse-row">
-            <div class="verse-card">
-              <div class="verse-actions">
-                <button @click="editVerse(verse)" class="action-btn edit" title="Editar">✎</button>
-                <button @click="handleDelete(verse.id)" class="action-btn delete" title="Excluir">✕</button>
-              </div>
+          <draggable 
+            v-model="verses" 
+            item-key="id" 
+            handle=".drag-handle"
+            @end="handleDragEnd"
+            ghost-class="ghost-card"
+          >
+            <template #item="{ element }">
+              <div class="verse-row">
+                <div class="verse-card">
+                  <div class="drag-handle" title="Arraste para reordenar">⠿</div>
+                  
+                  <div class="verse-actions">
+                    <button @click="editVerse(element)" class="action-btn edit" title="Editar">✎</button>
+                    <button @click="handleDelete(element.id)" class="action-btn delete" title="Excluir">✕</button>
+                  </div>
 
-              <div class="section-label">{{ verse.lyrics }}</div>
-              <pre v-if="verse.chords" class="chords-line">{{ verse.chords }}</pre>
-            </div>
-          </div>
+                  <div class="section-label">{{ element.lyrics }}</div>
+                  <pre v-if="element.chords" class="chords-line">{{ element.chords }}</pre>
+                </div>
+              </div>
+            </template>
+          </draggable>
         </div>
 
         <div v-else-if="!showForm" class="status-msg">
@@ -61,10 +73,12 @@
 </template>
 
 <script>
+import draggable from 'vuedraggable';
 import { fetchVersesByMusicId, createVerse, updateVerse, deleteVerse } from './../services/VersesService.js';
 
 export default {
   name: 'VersesDisplay',
+  components: { draggable },
   props: {
     musicId: { type: Number, required: true },
     musicName: { type: String, default: 'Música' }
@@ -89,11 +103,22 @@ export default {
       if (!this.musicId) return;
       this.loading = true;
       try {
-        this.verses = await fetchVersesByMusicId(this.musicId);
+        const data = await fetchVersesByMusicId(this.musicId);
+        this.verses = data.sort((a, b) => (a.position || 0) - (b.position || 0));
       } catch (error) {
         console.error("Erro ao carregar versos:", error);
       } finally {
         this.loading = false;
+      }
+    },
+    async handleDragEnd() {
+      try {
+        const updates = this.verses.map((verse, index) => {
+          return updateVerse(verse.id, { ...verse, position: index });
+        });
+        await Promise.all(updates);
+      } catch (error) {
+        console.error("Erro ao salvar nova ordem:", error);
       }
     },
     editVerse(verse) {
@@ -107,13 +132,13 @@ export default {
         alert("A identificação da parte é obrigatória.");
         return;
       }
-
       this.submitting = true;
       try {
         if (this.isEditing) {
           await updateVerse(this.editingId, this.newVerse);
         } else {
-          await createVerse({ ...this.newVerse, musicId: this.musicId });
+          const position = this.verses.length;
+          await createVerse({ ...this.newVerse, musicId: this.musicId, position });
         }
         this.resetForm();
         await this.loadVerses();
@@ -211,9 +236,29 @@ h1 {
 .verse-card {
   background: rgba(44, 36, 30, 0.6);
   border-left: 4px solid #4d1212; 
-  padding: 15px 25px;
+  padding: 15px 25px 15px 45px;
   border-radius: 0 8px 8px 0;
   position: relative;
+}
+
+.drag-handle {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: grab;
+  color: #5c4b3c;
+  font-size: 1.5rem;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.ghost-card {
+  opacity: 0.3;
+  background: #4d1212 !important;
 }
 
 .verse-actions {

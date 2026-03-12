@@ -15,13 +15,17 @@ api.interceptors.request.use(config => {
 
 const API_BASE = `/musics`;
 
-export async function fetchAllMusics() {
-    const response = await api.get(API_BASE);
+export async function fetchAllMusics(type = null) {
+    const response = await api.get(API_BASE, {
+        params: { type }
+    });
     return response.data;
 }
 
-export async function fetchMusicsByUser(userId) {
-    const response = await api.get(`${API_BASE}/user/${userId}`);
+export async function fetchMusicsByUser(userId, type = null) {
+    const response = await api.get(`${API_BASE}/user/${userId}`, {
+        params: { type }
+    });
     return response.data;
 }
 
