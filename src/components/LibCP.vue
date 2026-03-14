@@ -254,7 +254,7 @@ export default {
 
 <style scoped>
 .book-container {
-  max-width: 1000px;
+  max-width: 90%;
   margin: 40px auto;
   perspective: 1000px;
 }
@@ -273,7 +273,7 @@ export default {
     linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 5%), 
     repeating-linear-gradient(transparent 0px, transparent 34px, rgba(74, 63, 53, 0.5) 35px);
   padding: 50px 40px;
-  min-height: 700px;
+  min-height: 950px;
   border-radius: 2px 10px 10px 2px;
   position: relative;
   box-shadow: inset 4px 0 10px rgba(0,0,0,0.3);
