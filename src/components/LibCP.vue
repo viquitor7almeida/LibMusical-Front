@@ -6,7 +6,11 @@
         
         <div class="header-actions">
           <div class="header-center">
-            <h2 class="grid-title">{{ currentType === 'COMPOSITION' ? 'Minhas Composições' : 'Cifras & Covers' }}</h2>
+            <transition name="fade" mode="out-in">
+              <h2 class="grid-title" :key="currentType">
+                {{ currentType === 'COMPOSITION' ? 'Minhas Composições' : 'Cifras & Covers' }}
+              </h2>
+            </transition>
             <button @click="openEditModal({ type: currentType })" class="add-btn">+</button>
           </div>
           
@@ -18,28 +22,36 @@
         <table class="book-table">
           <thead>
             <tr>
-              <th>Título</th>
-              <th>Compositores</th>
-              <th>Versos</th>
-              <th>Cifra</th>
-              <th class="text-center">Mp3</th>
-              <th>Ações</th>
+              <th class="col-titulo">Título</th>
+              <th class="col-compositores">Compositores</th>
+              <th class="col-btn">Versos</th>
+              <th class="col-btn">Cifra</th>
+              <th class="col-btn">Acordes</th>
+              <th class="col-mp3">Mp3</th>
+              <th class="col-acoes">Ações</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="music in paginatedData" :key="music.id">
-              <td>{{ music.name }}</td>
-              <td>{{ music.composers }}</td>
-              <td>
+          <transition-group name="list" tag="tbody">
+            <tr v-for="music in paginatedData" :key="music.id" class="table-row">
+              <td class="col-titulo">
+                <span class="text-truncate" :title="music.name">{{ music.name }}</span>
+              </td>
+              <td class="col-compositores">
+                <span class="text-truncate" :title="music.composers">{{ music.composers }}</span>
+              </td>
+              <td class="col-btn">
                 <button @click="openVerses(music)" class="action-btn">Ver Versos</button>
               </td>
-              <td>
+              <td class="col-btn">
                 <button @click="openChords(music)" class="action-btn">Ver Cifra</button>
               </td>
-              <td class="text-center">
+              <td class="col-btn">
+                <button @click="openMusicChords(music)" class="action-btn">Ver Acordes</button>
+              </td>
+              <td class="col-mp3">
                 <div v-if="music.audioUrl" class="audio-cell">
                   <button @click="playAudio(music)" class="audio-btn">
-                    {{ currentPlayingUrl === music.audioUrl ? '⏸️' : '▶️' }}
+                    {{ currentPlayingUrl === music.audioUrl ? '||' : '►' }}
                   </button>
                 </div>
                 <div v-else class="audio-cell">
@@ -55,12 +67,14 @@
                   </label>
                 </div>
               </td>
-              <td class="row-actions">
-                <button @click="openEditModal(music)" class="row-btn edit" title="Editar">✎</button>
-                <button @click="handleDelete(music.id)" class="row-btn delete" title="Excluir">✕</button>
+              <td class="col-acoes">
+                <div class="row-actions">
+                  <button @click="openEditModal(music)" class="row-btn edit" title="Editar">✎</button>
+                  <button @click="handleDelete(music.id)" class="row-btn delete" title="Excluir">✕</button>
+                </div>
               </td>
             </tr>
-          </tbody>
+          </transition-group>
         </table>
 
         <div class="pagination" v-if="musics.length > 0">
@@ -71,21 +85,26 @@
       </div>
     </div>
 
-    <div v-if="activeModal && (activeModal === 'verses' || activeModal === 'chords')" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content paper">
-        <button class="close-modal" @click="closeModal">X</button>
-        <VersesDisplay v-if="activeModal === 'verses'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" />
-        <ChordsDisplay v-if="activeModal === 'chords'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" />
+    <transition name="modal-fade">
+      <div v-if="activeModal && (activeModal === 'verses' || activeModal === 'chords' || activeModal === 'music-chords')" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content paper">
+          <button class="close-modal" @click="closeModal">X</button>
+          <VersesDisplay v-if="activeModal === 'verses'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" />
+          <ChordsDisplay v-if="activeModal === 'chords'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" />
+          <MusicChordsCP v-if="activeModal === 'music-chords'" :musicId="selectedMusic.id" :musicName="selectedMusic.name" @updated="loadMusics" />
+        </div>
       </div>
-    </div>
+    </transition>
 
-    <MusicEditModal 
-      v-if="activeModal === 'edit'" 
-      :musicData="selectedMusic" 
-      :loading="submitting"
-      @close="closeModal" 
-      @save="handleSaveMusic"
-    />
+    <transition name="modal-fade">
+      <MusicEditModal 
+        v-if="activeModal === 'edit'" 
+        :musicData="selectedMusic" 
+        :loading="submitting"
+        @close="closeModal" 
+        @save="handleSaveMusic"
+      />
+    </transition>
   </div>
 </template>
 
@@ -95,10 +114,11 @@ import { getUserId } from './../services/AuthService.js';
 import VersesDisplay from './VersesCP.vue';
 import ChordsDisplay from './ChordSymbolsCP.vue';
 import MusicEditModal from './MusicEditCP.vue';
+import MusicChordsCP from './MusicChordsCP.vue';
 
 export default {
   name: 'LibCP',
-  components: { VersesDisplay, ChordsDisplay, MusicEditModal },
+  components: { VersesDisplay, ChordsDisplay, MusicEditModal, MusicChordsCP },
   props: {
     currentPlayingUrl: {
       type: String,
@@ -206,6 +226,10 @@ export default {
       this.selectedMusic = music;
       this.activeModal = 'chords';
     },
+    openMusicChords(music) {
+      this.selectedMusic = music;
+      this.activeModal = 'music-chords';
+    },
     openEditModal(music) {
       this.selectedMusic = { ...music, type: music.type || this.currentType };
       this.activeModal = 'edit';
@@ -230,7 +254,7 @@ export default {
 
 <style scoped>
 .book-container {
-  max-width: 950px;
+  max-width: 1000px;
   margin: 40px auto;
   perspective: 1000px;
 }
@@ -337,33 +361,48 @@ export default {
   width: 100%; 
   border-collapse: collapse; 
   margin-bottom: 30px; 
+  table-layout: fixed;
+}
+
+.book-table th, .book-table td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 12px 5px;
 }
 
 .book-table th { 
-  text-align: left; 
   font-variant: small-caps; 
   font-size: 1.1rem; 
   color: #d1c5a5; 
   border-bottom: 2px solid #4a3f35; 
-  padding-bottom: 8px; 
-  letter-spacing: 1px;
+  padding-bottom: 10px;
 }
 
 .book-table td { 
-  padding: 14px 8px; 
   color: #e0d8c3; 
   border-bottom: 1px solid rgba(74, 63, 53, 0.4); 
 }
 
-.text-center { 
-  text-align: center !important; 
+.col-titulo { width: 22%; }
+.col-compositores { width: 18%; }
+.col-btn { width: 13%; }
+.col-mp3 { width: 8%; }
+.col-acoes { width: 13%; }
+
+.text-truncate {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .audio-cell {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 40px;
+  width: 100%;
 }
 
 .audio-btn { 
@@ -371,33 +410,31 @@ export default {
   border: none; 
   cursor: pointer; 
   font-size: 1.2rem; 
-  filter: sepia(1) brightness(0.8); 
+  color: #d1c5a5;
+  transition: transform 0.2s;
+}
+
+.audio-btn:hover {
+  transform: scale(1.2);
 }
 
 .inline-add-btn {
   background: #6f5c4d;
   color: #d5d5d5;
   border: 1px solid #8a827b;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   border-radius: 4px;
-  font-weight: bold;
-  font-size: 1.1rem;
   transition: all 0.3s;
 }
 
 .inline-add-btn:hover {
   background: #4a3f35;
   color: #fff;
-}
-
-.loading-spinner { 
-  opacity: 0.5; 
-  cursor: wait; 
 }
 
 .action-btn { 
@@ -408,6 +445,7 @@ export default {
   font-weight: bold; 
   cursor: pointer; 
   transition: all 0.3s; 
+  white-space: nowrap; 
 }
 
 .action-btn:hover { 
@@ -427,16 +465,11 @@ export default {
   cursor: pointer;
   font-size: 1.1rem;
   color: #5c4b3c;
-  transition: color 0.2s;
+  transition: 0.2s;
 }
 
-.row-btn.edit:hover { 
-  color: #d1c5a5; 
-}
-
-.row-btn.delete:hover { 
-  color: #ff4d4d; 
-}
+.row-btn.edit:hover { color: #d1c5a5; }
+.row-btn.delete:hover { color: #ff4d4d; }
 
 .pagination { 
   display: flex; 
@@ -451,14 +484,13 @@ export default {
   background: transparent; 
   border: 1px solid #4a3f35; 
   color: #d1c5a5; 
-  font-size: 1.1rem; 
   border-radius: 50%; 
   width: 35px; 
   height: 35px; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  transition: 0.3s;
+  cursor: pointer;
 }
 
 .page-btn:hover:not(:disabled) {
@@ -466,21 +498,12 @@ export default {
   color: #f4ecd8;
 }
 
-.page-btn:disabled { 
-  opacity: 0.2; 
-}
-
-.page-info { 
-  font-style: italic; 
-  color: #a68b6d; 
-}
+.page-btn:disabled { opacity: 0.2; }
+.page-info { font-style: italic; color: #a68b6d; }
 
 .modal-overlay { 
   position: fixed; 
-  top: 0; 
-  left: 0; 
-  width: 100%; 
-  height: 100%; 
+  inset: 0;
   background: rgba(0, 0, 0, 0.9); 
   display: flex; 
   justify-content: center; 
@@ -508,7 +531,12 @@ export default {
   border: none; 
   padding: 5px 12px; 
   cursor: pointer; 
-  border-radius: 3px; 
-  z-index: 10;
 }
+
+.list-enter-active, .list-leave-active { transition: all 0.4s ease; }
+.list-enter-from { opacity: 0; transform: translateY(15px); }
+.list-leave-to { opacity: 0; transform: translateY(-15px); }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>
