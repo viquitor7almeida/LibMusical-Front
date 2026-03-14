@@ -1,40 +1,62 @@
 <template>
   <div class="verses-container">
+    <div class="belt-control">
+      <button 
+        class="toggle-belt-btn" 
+        :class="{ 'active': showBelt }" 
+        @click="showBelt = !showBelt"
+      >
+        <span class="icon">{{ showBelt ? '✕' : '♫' }}</span>
+        <span class="text">{{ showBelt ? 'Fechar Esteira' : 'Ver Acordes' }}</span>
+      </button>
+    </div>
+
+    <transition name="slide-belt">
+      <div v-if="showBelt" class="belt-wrapper">
+        <MiniChordsCP 
+          v-model="chordShapes" 
+          :musicId="musicId" 
+        />
+      </div>
+    </transition>
+
     <div class="notebook-page">
       <header class="page-header">
         <div class="title-group">
           <h1>{{ musicName }}</h1>
           <span class="subtitle">Estrutura e Acordes</span>
         </div>
-        <button @click="showForm = !showForm" class="back-btn">
+        <button @click="toggleForm" class="back-btn">
           {{ showForm ? 'Cancelar' : 'Adicionar Parte' }}
         </button>
       </header>
 
       <div class="lyrics-content">
-        <div v-if="showForm" class="verse-form verse-card">
-          <div class="form-row-inline">
-            <div class="form-group flex-2">
-              <label>Identificação da Parte (Letra) *</label>
+        <transition name="fade-slide">
+          <div v-if="showForm" class="verse-form verse-card">
+            <div class="form-row-inline">
+              <div class="form-group flex-2">
+                <label>Identificação da Parte (Letra) *</label>
+                <input 
+                  v-model="newVerse.lyrics" 
+                  placeholder="Ex: Refrão, Intro, Estrofe 1..." 
+                  class="form-input section-name-input"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Sequência de Acordes</label>
               <input 
-                v-model="newVerse.lyrics" 
-                placeholder="Ex: Refrão, Intro, Estrofe 1..." 
-                class="form-input section-name-input"
+                v-model="newVerse.chords" 
+                placeholder="Ex: G | D | Em | C" 
+                class="form-input chords-input"
               />
             </div>
+            <button @click="handleSubmit" :disabled="submitting" class="save-btn">
+              {{ submitting ? 'Salvando...' : (isEditing ? 'Atualizar Estrutura' : 'Confirmar Estrutura') }}
+            </button>
           </div>
-          <div class="form-group">
-            <label>Sequência de Acordes</label>
-            <input 
-              v-model="newVerse.chords" 
-              placeholder="Ex: G | D | Em | C" 
-              class="form-input chords-input"
-            />
-          </div>
-          <button @click="handleSubmit" :disabled="submitting" class="save-btn">
-            {{ submitting ? 'Salvando...' : 'Confirmar Estrutura' }}
-          </button>
-        </div>
+        </transition>
 
         <div v-if="loading" class="status-msg">Carregando estrutura...</div>
         
@@ -45,10 +67,11 @@
             handle=".drag-handle"
             @end="handleDragEnd"
             ghost-class="ghost-card"
+            :animation="300"
           >
             <template #item="{ element }">
               <div class="verse-row">
-                <div class="verse-card">
+                <div class="verse-card item-display-card">
                   <div class="drag-handle" title="Arraste para reordenar">⠿</div>
                   
                   <div class="verse-actions">
@@ -75,10 +98,12 @@
 <script>
 import draggable from 'vuedraggable';
 import { fetchVersesByMusicId, createVerse, updateVerse, deleteVerse } from './../services/VersesService.js';
+import { fetchChordsByMusic } from './../services/MusicChordsService.js';
+import MiniChordsCP from './MiniChordsCP.vue';
 
 export default {
   name: 'VersesDisplay',
-  components: { draggable },
+  components: { draggable, MiniChordsCP },
   props: {
     musicId: { type: Number, required: true },
     musicName: { type: String, default: 'Música' }
@@ -86,8 +111,10 @@ export default {
   data() {
     return {
       verses: [],
+      chordShapes: [],
       loading: false,
       showForm: false,
+      showBelt: false,
       submitting: false,
       isEditing: false,
       editingId: null,
@@ -103,12 +130,24 @@ export default {
       if (!this.musicId) return;
       this.loading = true;
       try {
-        const data = await fetchVersesByMusicId(this.musicId);
-        this.verses = data.sort((a, b) => (a.position || 0) - (b.position || 0));
+        const [versesData, shapesData] = await Promise.all([
+          fetchVersesByMusicId(this.musicId),
+          fetchChordsByMusic(this.musicId)
+        ]);
+
+        this.verses = versesData.sort((a, b) => (a.position || 0) - (b.position || 0));
+        this.chordShapes = Array.isArray(shapesData) ? shapesData : (shapesData?.content || []);
       } catch (error) {
-        console.error("Erro ao carregar versos:", error);
+        console.error("Erro ao carregar dados:", error);
       } finally {
         this.loading = false;
+      }
+    },
+    toggleForm() {
+      if (this.showForm) {
+        this.resetForm();
+      } else {
+        this.showForm = true;
       }
     },
     async handleDragEnd() {
@@ -176,6 +215,62 @@ export default {
   margin: 10px auto;
 }
 
+.belt-control {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.toggle-belt-btn {
+  background: #2c241e;
+  border: 2px solid #a68b6d;
+  color: #d1c5a5;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 4px 4px 0px #1a140f;
+}
+
+.toggle-belt-btn:hover {
+  background: #3d3128;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #1a140f;
+}
+
+.toggle-belt-btn.active {
+  background: #6e1a1a;
+  border-color: #8e1d1d;
+  color: #fff;
+}
+
+.belt-wrapper {
+  margin-bottom: 15px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.slide-belt-enter-active, .slide-belt-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 300px;
+  opacity: 1;
+}
+
+.slide-belt-enter-from, .slide-belt-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
 .notebook-page {
   background: #1e1a17; 
   background-image: linear-gradient(rgba(74, 63, 53, 0.3) 1px, transparent 1px);
@@ -227,6 +322,12 @@ h1 {
   text-transform: uppercase;
   white-space: nowrap; 
   margin-left: 20px; 
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #4a3f35;
+  transform: translateY(-2px);
 }
 
 .verse-row {
@@ -239,6 +340,13 @@ h1 {
   padding: 15px 25px 15px 45px;
   border-radius: 0 8px 8px 0;
   position: relative;
+  transition: all 0.3s ease;
+}
+
+.item-display-card:hover {
+  transform: translateX(5px);
+  background: rgba(54, 46, 40, 0.8);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
 .drag-handle {
@@ -250,10 +358,6 @@ h1 {
   color: #5c4b3c;
   font-size: 1.5rem;
   user-select: none;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
 }
 
 .ghost-card {
@@ -275,7 +379,7 @@ h1 {
   cursor: pointer;
   font-size: 1.1rem;
   color: #5c4b3c;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .action-btn.edit:hover { color: #d1c5a5; }
@@ -299,6 +403,7 @@ h1 {
   color: #f0e6d2; 
   margin: 0;
   white-space: pre-wrap;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
 .verse-form {
@@ -337,12 +442,19 @@ h1 {
   font-weight: bold;
   width: 100%;
   text-transform: uppercase;
-  transition: background 0.3s;
 }
 
 .status-msg {
   text-align: center;
   margin-top: 50px;
   color: #5c4b3c;
+}
+
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.4s ease;
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 </style>

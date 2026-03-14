@@ -1,5 +1,25 @@
 <template>
   <div class="chords-container">
+    <div class="belt-control">
+      <button 
+        class="toggle-belt-btn" 
+        :class="{ 'active': showBelt }" 
+        @click="showBelt = !showBelt"
+      >
+        <span class="icon">{{ showBelt ? '✕' : '♫' }}</span>
+        <span class="text">{{ showBelt ? 'Fechar Esteira' : 'Ver Acordes' }}</span>
+      </button>
+    </div>
+
+    <transition name="slide-belt">
+      <div v-if="showBelt" class="belt-wrapper">
+        <MiniChordsCP 
+          v-model="chordShapes" 
+          :musicId="musicId" 
+        />
+      </div>
+    </transition>
+
     <div class="notebook-page">
       <header class="page-header">
         <div class="title-group">
@@ -44,9 +64,12 @@
 
 <script>
 import { fetchChordsByMusicId, createChord, updateChord } from './../services/ChordSymbolsService.js';
+import { fetchChordsByMusic } from './../services/MusicChordsService.js';
+import MiniChordsCP from './MiniChordsCP.vue';
 
 export default {
   name: 'ChordsDisplay',
+  components: { MiniChordsCP },
   props: {
     musicId: { type: Number, required: true },
     musicName: { type: String, default: 'Música' }
@@ -54,8 +77,10 @@ export default {
   data() {
     return {
       chords: [], 
+      chordShapes: [], 
       loading: false,
       isEditing: false,
+      showBelt: false,
       editableText: ''
     };
   },
@@ -64,8 +89,13 @@ export default {
       if (!this.musicId) return;
       this.loading = true;
       try {
-        const data = await fetchChordsByMusicId(this.musicId);
-        this.chords = Array.isArray(data) ? data : (data ? [data] : []);
+        const [cifraData, shapesData] = await Promise.all([
+          fetchChordsByMusicId(this.musicId),
+          fetchChordsByMusic(this.musicId)
+        ]);
+
+        this.chords = Array.isArray(cifraData) ? cifraData : (cifraData ? [cifraData] : []);
+        this.chordShapes = Array.isArray(shapesData) ? shapesData : (shapesData?.content || []);
       } catch (error) {
         console.error("Erro ao carregar cifra:", error);
       } finally {
@@ -114,6 +144,72 @@ export default {
 .chords-container { 
   max-width: 900px; 
   margin: 10px auto; 
+}
+
+.belt-control {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.toggle-belt-btn {
+  background: #2c241e;
+  border: 2px solid #a68b6d;
+  color: #d1c5a5;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 4px 4px 0px #1a140f;
+}
+
+.toggle-belt-btn:hover {
+  background: #3d3128;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #1a140f;
+}
+
+.toggle-belt-btn:active {
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0px #1a140f;
+}
+
+.toggle-belt-btn.active {
+  background: #6e1a1a;
+  border-color: #8e1d1d;
+  color: #fff;
+}
+
+.toggle-belt-btn .icon {
+  font-size: 1.2rem;
+}
+
+.belt-wrapper {
+  margin-bottom: 15px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.slide-belt-enter-active, .slide-belt-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 300px;
+  opacity: 1;
+}
+
+.slide-belt-enter-from, .slide-belt-leave-to {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  transform: translateY(-20px);
 }
 
 .notebook-page {
